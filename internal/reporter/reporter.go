@@ -3,7 +3,6 @@ package reporter
 import (
     "encoding/json"
     "fmt"
-    "os"
 
     "github.com/fatih/color"
     "github.com/bdwilliams3/api-vuln-scanner/internal/scanner"
