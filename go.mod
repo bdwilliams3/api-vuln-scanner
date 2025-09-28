@@ -1,4 +1,4 @@
-module github.com/yourusername/api-vuln-scanner
+module github.com/bdwilliams3/api-vuln-scanner
 
 go 1.21
 
