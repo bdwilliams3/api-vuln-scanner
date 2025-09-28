@@ -2,6 +2,9 @@ package cmd
 
 import (
     "fmt"
+    "os"
+    "path/filepath"
+    "time"
 
     "github.com/spf13/cobra"
     "github.com/bdwilliams3/api-vuln-scanner/internal/reporter"
@@ -37,8 +40,22 @@ var scanCmd = &cobra.Command{
             return fmt.Errorf("scan failed: %w", err)
         }
 
+        // Create reports directory if it doesn't exist
+        if err := os.MkdirAll("reports", 0755); err != nil {
+            return fmt.Errorf("failed to create reports directory: %w", err)
+        }
+
+        // Generate filename with timestamp
+        timestamp := time.Now().Format("20060102_150405")
+        var filename string
+        if outputFormat == "csv" {
+            filename = fmt.Sprintf("reports/scan_%s.csv", timestamp)
+        } else {
+            filename = fmt.Sprintf("reports/scan_%s.json", timestamp)
+        }
+
         r := reporter.NewReporter(outputFormat)
-        return r.Generate(results, targetURL)
+        return r.Generate(results, targetURL, filename)
     },
 }
 
@@ -46,7 +63,7 @@ func init() {
     rootCmd.AddCommand(scanCmd)
     
     scanCmd.Flags().StringVarP(&targetURL, "url", "u", "", "Target API URL to scan (required)")
-    scanCmd.Flags().StringVarP(&outputFormat, "output", "o", "console", "Output format (console, json)")
+    scanCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format (json, csv)")
     scanCmd.Flags().IntVarP(&timeout, "timeout", "t", 10, "Request timeout in seconds")
     
     scanCmd.MarkFlagRequired("url")

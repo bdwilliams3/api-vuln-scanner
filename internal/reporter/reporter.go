@@ -1,10 +1,12 @@
 package reporter
 
 import (
+    "encoding/csv"
     "encoding/json"
     "fmt"
+    "os"
+    "strconv"
 
-    "github.com/fatih/color"
     "github.com/bdwilliams3/api-vuln-scanner/internal/scanner"
 )
 
@@ -16,93 +18,79 @@ func NewReporter(format string) *Reporter {
     return &Reporter{format: format}
 }
 
-func (r *Reporter) Generate(results *scanner.ScanResults, targetURL string) error {
+func (r *Reporter) Generate(results *scanner.ScanResults, targetURL string, filename string) error {
     switch r.format {
+    case "csv":
+        return r.generateCSV(results, filename)
     case "json":
-        return r.generateJSON(results)
-    case "console":
-        return r.generateConsole(results)
+        return r.generateJSON(results, filename)
     default:
         return fmt.Errorf("unsupported output format: %s", r.format)
     }
 }
 
-func (r *Reporter) generateJSON(results *scanner.ScanResults) error {
-    jsonData, err := json.MarshalIndent(results, "", "  ")
+func (r *Reporter) generateJSON(results *scanner.ScanResults, filename string) error {
+    file, err := os.Create(filename)
     if err != nil {
-        return fmt.Errorf("failed to marshal results: %w", err)
+        return fmt.Errorf("failed to create file: %w", err)
+    }
+    defer file.Close()
+
+    encoder := json.NewEncoder(file)
+    encoder.SetIndent("", "  ")
+    
+    if err := encoder.Encode(results); err != nil {
+        return fmt.Errorf("failed to write JSON: %w", err)
     }
 
-    fmt.Println(string(jsonData))
+    fmt.Printf("Report saved to: %s\n", filename)
     return nil
 }
 
-func (r *Reporter) generateConsole(results *scanner.ScanResults) error {
-    // Colors
-    red := color.New(color.FgRed).SprintFunc()
-    yellow := color.New(color.FgYellow).SprintFunc()
-    green := color.New(color.FgGreen).SprintFunc()
-    blue := color.New(color.FgBlue).SprintFunc()
-    cyan := color.New(color.FgCyan).SprintFunc()
+func (r *Reporter) generateCSV(results *scanner.ScanResults, filename string) error {
+    file, err := os.Create(filename)
+    if err != nil {
+        return fmt.Errorf("failed to create file: %w", err)
+    }
+    defer file.Close()
 
-    fmt.Println("\n" + color.New(color.Bold).Sprint("=== API Vulnerability Scan Report ==="))
-    fmt.Printf("Target: %s\n", results.URL)
-    fmt.Printf("Scan Time: %s\n\n", results.Timestamp.Format("2006-01-02 15:04:05"))
+    writer := csv.NewWriter(file)
+    defer writer.Flush()
 
-    // Summary
-    fmt.Println(color.New(color.Bold).Sprint("Summary:"))
-    fmt.Printf("  Total Issues Found: %d\n", results.Summary.Total)
-    if results.Summary.Critical > 0 {
-        fmt.Printf("  Critical: %s\n", red(results.Summary.Critical))
-    }
-    if results.Summary.High > 0 {
-        fmt.Printf("  High: %s\n", red(results.Summary.High))
-    }
-    if results.Summary.Medium > 0 {
-        fmt.Printf("  Medium: %s\n", yellow(results.Summary.Medium))
-    }
-    if results.Summary.Low > 0 {
-        fmt.Printf("  Low: %s\n", blue(results.Summary.Low))
-    }
-    if results.Summary.Info > 0 {
-        fmt.Printf("  Info: %s\n", cyan(results.Summary.Info))
+    // Write header
+    header := []string{"ID", "Title", "Category", "Severity", "Found", "Description", "Details"}
+    if err := writer.Write(header); err != nil {
+        return fmt.Errorf("failed to write CSV header: %w", err)
     }
 
-    fmt.Println("\n" + color.New(color.Bold).Sprint("Detailed Results:"))
-
-    foundIssues := false
+    // Write vulnerability data
     for _, vuln := range results.Vulnerabilities {
-        if !vuln.Found {
-            continue
+        record := []string{
+            vuln.ID,
+            vuln.Title,
+            vuln.Category,
+            string(vuln.Severity),
+            strconv.FormatBool(vuln.Found),
+            vuln.Description,
+            vuln.Details,
         }
-        
-        foundIssues = true
-        severityColor := getSeverityColor(vuln.Severity)
-        
-        fmt.Printf("\n[%s] %s (%s)\n", severityColor(vuln.Severity), vuln.Title, vuln.ID)
-        fmt.Printf("  Category: %s\n", vuln.Category)
-        fmt.Printf("  Description: %s\n", vuln.Description)
-        if vuln.Details != "" {
-            fmt.Printf("  Details: %s\n", vuln.Details)
+        if err := writer.Write(record); err != nil {
+            return fmt.Errorf("failed to write CSV record: %w", err)
         }
     }
 
-    if !foundIssues {
-        fmt.Println(green("\nNo vulnerabilities found! 🎉"))
-    }
+    // Write summary as additional rows
+    writer.Write([]string{}) // Empty row
+    writer.Write([]string{"SUMMARY", "", "", "", "", "", ""})
+    writer.Write([]string{"URL", results.URL, "", "", "", "", ""})
+    writer.Write([]string{"Timestamp", results.Timestamp.Format("2006-01-02 15:04:05"), "", "", "", "", ""})
+    writer.Write([]string{"Total Issues", strconv.Itoa(results.Summary.Total), "", "", "", "", ""})
+    writer.Write([]string{"Critical", strconv.Itoa(results.Summary.Critical), "", "", "", "", ""})
+    writer.Write([]string{"High", strconv.Itoa(results.Summary.High), "", "", "", "", ""})
+    writer.Write([]string{"Medium", strconv.Itoa(results.Summary.Medium), "", "", "", "", ""})
+    writer.Write([]string{"Low", strconv.Itoa(results.Summary.Low), "", "", "", "", ""})
+    writer.Write([]string{"Info", strconv.Itoa(results.Summary.Info), "", "", "", "", ""})
 
+    fmt.Printf("Report saved to: %s\n", filename)
     return nil
-}
-
-func getSeverityColor(severity scanner.Severity) func(a ...interface{}) string {
-    switch severity {
-    case scanner.SeverityCritical, scanner.SeverityHigh:
-        return color.New(color.FgRed).SprintFunc()
-    case scanner.SeverityMedium:
-        return color.New(color.FgYellow).SprintFunc()
-    case scanner.SeverityLow:
-        return color.New(color.FgBlue).SprintFunc()
-    default:
-        return color.New(color.FgCyan).SprintFunc()
-    }
 }
