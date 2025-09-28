@@ -6,7 +6,7 @@ import (
     "os"
 
     "github.com/fatih/color"
-    "github.com/yourusername/api-vuln-scanner/internal/scanner"
+    "github.com/bdwilliams3/api-vuln-scanner/internal/scanner"
 )
 
 type Reporter struct {

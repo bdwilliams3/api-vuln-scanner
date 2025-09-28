@@ -5,8 +5,8 @@ import (
     "os"
 
     "github.com/spf13/cobra"
-    "github.com/yourusername/api-vuln-scanner/internal/reporter"
-    "github.com/yourusername/api-vuln-scanner/internal/scanner"
+    "github.com/bdwilliams3/api-vuln-scanner/internal/reporter"
+    "github.com/bdwilliams3/api-vuln-scanner/internal/scanner"
 )
 
 var (

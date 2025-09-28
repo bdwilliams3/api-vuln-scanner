@@ -4,7 +4,7 @@ import (
     "fmt"
     "os"
 
-    "github.com/yourusername/api-vuln-scanner/cmd"
+    "github.com/bdwilliams3/api-vuln-scanner/cmd"
 )
 
 func main() {
