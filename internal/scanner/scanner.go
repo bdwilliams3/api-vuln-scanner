@@ -5,7 +5,7 @@ import (
     "net/http"
     "time"
 
-    "github.com/yourusername/api-vuln-scanner/pkg/utils"
+    "github.com/bdwilliams3/api-vuln-scanner/pkg/utils"
 )
 
 type Scanner struct {
