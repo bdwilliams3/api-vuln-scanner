@@ -23,7 +23,10 @@ go mod init github.com/yourusername/api-vuln-scanner
 go mod tidy
 
 # Build the application
-go build -o scanner .
+go build -o scanner.exe .
+
+# Run the scanner
+.\scanner.exe scan -u $URL
 ```
 
 ## Usage
